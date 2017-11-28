@@ -41,4 +41,5 @@
     <string name="global_action_restart_hot">Hot</string>
     <string name="global_action_screenshot">Screenshot</string>
 
+    <string name="navbar_tuner_title">Navbar tuner</string>
 </resources>

@@ -4011,6 +4011,13 @@ public final class Settings {
          */
 
         /**
+         * Whether to use a letterbox effect for fullscreen apps
+         *
+         * @hide
+         */
+        public static final String USE_LETTERBOX_WHEN_FULLSCREEN = "use_letterbox_when_fullscreen";
+
+        /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
          *

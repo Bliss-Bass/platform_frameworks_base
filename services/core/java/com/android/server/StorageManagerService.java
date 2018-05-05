@@ -1218,8 +1218,10 @@ class StorageManagerService extends IStorageManager.Stub
                 final long destroy = Long.parseLong(cooked[6]);
 
                 final DropBoxManager dropBox = mContext.getSystemService(DropBoxManager.class);
-                dropBox.addText(TAG_STORAGE_BENCHMARK, scrubPath(path)
-                        + " " + ident + " " + create + " " + run + " " + destroy);
+                if (dropBox != null) {
+                    dropBox.addText(TAG_STORAGE_BENCHMARK, scrubPath(path)
+                            + " " + ident + " " + create + " " + run + " " + destroy);
+                }
 
                 final VolumeRecord rec = findRecordForPath(path);
                 if (rec != null) {
@@ -1236,8 +1238,10 @@ class StorageManagerService extends IStorageManager.Stub
                 final long time = Long.parseLong(cooked[3]);
 
                 final DropBoxManager dropBox = mContext.getSystemService(DropBoxManager.class);
-                dropBox.addText(TAG_STORAGE_TRIM, scrubPath(path)
+                if (dropBox != null) {
+                    dropBox.addText(TAG_STORAGE_TRIM, scrubPath(path)
                         + " " + bytes + " " + time);
+                }
 
                 final VolumeRecord rec = findRecordForPath(path);
                 if (rec != null) {
@@ -2641,7 +2645,14 @@ class StorageManagerService extends IStorageManager.Stub
                 // to let the UI to clear itself
                 mHandler.postDelayed(new Runnable() {
                     public void run() {
+                        // unmount the internal emulated volume first
                         try {
+                            mConnector.execute("volume", "unmount", "emulated");
+                        } catch (NativeDaemonConnectorException e) {
+                            Slog.e(TAG, "unable to shut down internal volume", e);
+                        }
+                        try {
+                            mConnector.execute("volume", "shutdown");
                             mCryptConnector.execute("cryptfs", "restart");
                         } catch (NativeDaemonConnectorException e) {
                             Slog.e(TAG, "problem executing in background", e);

@@ -124,17 +124,17 @@
     <bool name="config_sendAudioBecomingNoisy">true</bool>
 
     <!-- The duration (in milliseconds) of a short animation. -->
-    <integer name="config_shortAnimTime">200</integer>
+    <integer name="config_shortAnimTime">100</integer>
 
     <!-- The duration (in milliseconds) of a medium-length animation. -->
-    <integer name="config_mediumAnimTime">400</integer>
+    <integer name="config_mediumAnimTime">200</integer>
 
     <!-- The duration (in milliseconds) of a long animation. -->
-    <integer name="config_longAnimTime">500</integer>
+    <integer name="config_longAnimTime">250</integer>
 
     <!-- The duration (in milliseconds) of the activity open/close and fragment open/close animations. -->
-    <integer name="config_activityShortDur">150</integer>
-    <integer name="config_activityDefaultDur">220</integer>
+    <integer name="config_activityShortDur">75</integer>
+    <integer name="config_activityDefaultDur">110</integer>
 
     <!-- The duration (in milliseconds) of the tooltip show/hide animations. -->
     <integer name="config_tooltipAnimTime">150</integer>
@@ -422,7 +422,7 @@
           0 = Not available.
           1 = Available.
      -->
-    <integer translatable="false" name="config_wifi_wakeup_available">0</integer>
+    <integer translatable="false" name="config_wifi_wakeup_available">1</integer>
 
     <!-- Array of ConnectivityManager.TYPE_xxxx values allowable for tethering.
 
@@ -881,11 +881,11 @@
     <integer name="config_defaultNightDisplayCustomEndTime">21600000</integer>
 
     <!-- Minimum color temperature, in Kelvin, supported by Night display. -->
-    <integer name="config_nightDisplayColorTemperatureMin">2596</integer>
+    <integer name="config_nightDisplayColorTemperatureMin">1600</integer>
 
     <!-- Default color temperature, in Kelvin, to tint the screen when Night display is
          activated. -->
-    <integer name="config_nightDisplayColorTemperatureDefault">2850</integer>
+    <integer name="config_nightDisplayColorTemperatureDefault">2650</integer>
 
     <!-- Maximum color temperature, in Kelvin, supported by Night display. -->
     <integer name="config_nightDisplayColorTemperatureMax">4082</integer>
@@ -1507,6 +1507,8 @@
     <string-array name="config_locationProviderPackageNames" translatable="false">
         <!-- The standard AOSP fused location provider -->
         <item>com.android.location.fused</item>
+        <!-- microG unifiednlp location provider (standalone) -->
+        <item>org.microg.nlp</item>
     </string-array>
 
     <!-- This string array can be overriden to enable test location providers initially. -->
@@ -2105,11 +2107,13 @@
     <!-- Safe headphone volume index. When music stream volume is below this index
     the SPL on headphone output is compliant to EN 60950 requirements for portable music
     players. -->
-    <integer name="config_safe_media_volume_index">10</integer>
+    <integer name="config_safe_media_volume_index">20</integer>
 
     <!-- Configure mobile network MTU. The standard default is set here but each carrier
-         may have a specific value set in an overlay config.xml file. -->
-    <integer name="config_mobile_mtu">1500</integer>
+         may have a specific value set in an overlay config.xml file. 
+         This really must be 1358 as per 3GPP standards and packet segmentation on the LTE
+         radio.-->
+    <integer name="config_mobile_mtu">1358</integer>
 
     <!-- Configure mobile tcp buffer sizes in the form:
          rat-name:rmem_min,rmem_def,rmem_max,wmem_min,wmem_def,wmem_max
@@ -2847,6 +2851,11 @@
     <string-array translatable="false" name="config_defaultPinnerServiceFiles">
     </string-array>
 
+    <!-- Certain sensor firmwares break with having a batch
+         size set. By setting this to false, devices can opt
+         out of setting a batch size, which fixes rotation. -->
+    <bool name="config_useDefaultBatchingForAccel">true</bool>
+
     <!-- True if camera app should be pinned via Pinner Service -->
     <bool name="config_pinnerCameraApp">false</bool>
 
@@ -2930,7 +2939,7 @@
          animations. Note that this is only a default and will be overridden by a
          user-set value if toggled by settings so the "Transition animation scale" setting
          should also be hidden if intended to be permanent. -->
-    <item name="config_appTransitionAnimationDurationScaleDefault" format="float" type="dimen">1.0</item>
+    <item name="config_appTransitionAnimationDurationScaleDefault" format="float" type="dimen">0.5</item>
 
     <!-- Flag indicates that whether non-system apps can be installed on internal storage. -->
     <bool name="config_allow3rdPartyAppOnInternal">true</bool>
@@ -3087,4 +3096,9 @@
          booted.  -->
     <integer name="config_stableDeviceDisplayWidth">-1</integer>
     <integer name="config_stableDeviceDisplayHeight">-1</integer>
+
+    <!-- Older rotation sensors are not setting event.timestamp correctly. Setting to
+         true will use SystemClock.elapsedRealtimeNanos() to set timestamp. -->
+    <bool name="config_useSystemClockforRotationSensor">false</bool>
+
 </resources>

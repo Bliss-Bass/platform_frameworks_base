@@ -309,8 +309,6 @@ public class QSFooterImpl extends FrameLayout implements QSFooter,
 
     private void updateVisibilities() {
         updateAlarmVisibilities();
-        mSettingsContainer.findViewById(R.id.tuner_icon).setVisibility(
-                TunerService.isTunerEnabled(mContext) ? View.VISIBLE : View.INVISIBLE);
         final boolean isDemo = UserManager.isDeviceInDemoMode(mContext);
 
         mMultiUserSwitch.setVisibility(mExpanded && mMultiUserSwitch.hasMultipleUsers() && !isDemo
@@ -375,7 +373,7 @@ public class QSFooterImpl extends FrameLayout implements QSFooter,
         } else if (v == mDateTimeGroup) {
             Dependency.get(MetricsLogger.class).action(ACTION_QS_DATE,
                     mNextAlarm != null);
-            if (mNextAlarm != null) {
+            if (mNextAlarm != null && mNextAlarm.getShowIntent() != null) {
                 PendingIntent showIntent = mNextAlarm.getShowIntent();
                 mActivityStarter.startPendingIntentDismissingKeyguard(showIntent);
             } else {

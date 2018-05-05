@@ -332,6 +332,8 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
     WallpaperController mWallpaperController;
     int mInputMethodAnimLayerAdjustment;
 
+    private final int mSfHwRotation;
+
     private final Consumer<WindowState> mUpdateWindowsForAnimator = w -> {
         WindowStateAnimator winAnimator = w.mWinAnimator;
         if (winAnimator.hasSurface()) {
@@ -761,6 +763,9 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
 
         // Add itself as a child to the root container.
         mService.mRoot.addChild(this, null);
+
+        // Load hardware rotation from prop
+        mSfHwRotation = android.os.SystemProperties.getInt("ro.sf.hwrotation", 0) / 90;
 
         // TODO(b/62541591): evaluate whether this is the best spot to declare the
         // {@link DisplayContent} ready for use.
@@ -3104,17 +3109,6 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
                 crop.bottom = crop.top + cropHeight;
             }
 
-            // The screenshot API does not apply the current screen rotation.
-            int rot = mDisplay.getRotation();
-
-            if (rot == ROTATION_90 || rot == ROTATION_270) {
-                rot = (rot == ROTATION_90) ? ROTATION_270 : ROTATION_90;
-            }
-
-            // Surfaceflinger is not aware of orientation, so convert our logical
-            // crop to surfaceflinger's portrait orientation.
-            convertCropForSurfaceFlinger(crop, rot, dw, dh);
-
             if (DEBUG_SCREENSHOT) {
                 Slog.i(TAG_WM, "Screenshot: " + dw + "x" + dh + " from " + minLayer + " to "
                         + maxLayer + " appToken=" + appToken);
@@ -3140,7 +3134,7 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
             SurfaceControl.closeTransactionSync();
 
             bitmap = screenshoter.screenshot(crop, width, height, minLayer, maxLayer,
-                    inRotation, rot);
+                    inRotation, mDisplay.getRotation());
             if (bitmap == null) {
                 Slog.w(TAG_WM, "Screenshot failure taking screenshot for (" + dw + "x" + dh
                         + ") to layer " + maxLayer);
@@ -3148,30 +3142,6 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
             }
         }
         return bitmap;
-    }
-
-    // TODO: Can this use createRotationMatrix()?
-    private static void convertCropForSurfaceFlinger(Rect crop, int rot, int dw, int dh) {
-        if (rot == Surface.ROTATION_90) {
-            final int tmp = crop.top;
-            crop.top = dw - crop.right;
-            crop.right = crop.bottom;
-            crop.bottom = dw - crop.left;
-            crop.left = tmp;
-        } else if (rot == Surface.ROTATION_180) {
-            int tmp = crop.top;
-            crop.top = dh - crop.bottom;
-            crop.bottom = dh - tmp;
-            tmp = crop.right;
-            crop.right = dw - crop.left;
-            crop.left = dw - tmp;
-        } else if (rot == Surface.ROTATION_270) {
-            final int tmp = crop.top;
-            crop.top = crop.left;
-            crop.left = dh - crop.bottom;
-            crop.bottom = crop.right;
-            crop.right = dh - tmp;
-        }
     }
 
     void onSeamlessRotationTimeout() {

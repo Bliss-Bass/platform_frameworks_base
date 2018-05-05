@@ -253,6 +253,8 @@ import android.content.IIntentReceiver;
 import android.content.IIntentSender;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.om.IOverlayManager;
+import android.content.om.OverlayInfo;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.ConfigurationInfo;
@@ -506,7 +508,7 @@ public class ActivityManagerService extends IActivityManager.Stub
 
     // Amount of time after a call to stopAppSwitches() during which we will
     // prevent further untrusted switches from happening.
-    static final long APP_SWITCH_DELAY_TIME = 5*1000;
+    static final long APP_SWITCH_DELAY_TIME = 1*1000;
 
     // How long we wait for a launched process to attach to the activity manager
     // before we decide it's never going to come up for real.
@@ -602,6 +604,9 @@ public class ActivityManagerService extends IActivityManager.Stub
     private static final int MAX_BUGREPORT_TITLE_SIZE = 50;
 
     private static final int NATIVE_DUMP_TIMEOUT_MS = 2000; // 2 seconds;
+
+    // System prop for refreshing font
+    private static final String PROP_REFRESH_FONT = "sys.refresh_font";
 
     /** All system services */
     SystemServiceManager mSystemServiceManager;
@@ -1703,6 +1708,16 @@ public class ActivityManagerService extends IActivityManager.Stub
     CompatModeDialog mCompatModeDialog;
     UnsupportedDisplaySizeDialog mUnsupportedDisplaySizeDialog;
     long mLastMemUsageReportTime = 0;
+
+    // Min aging threshold in milliseconds to consider a B-service
+    int mMinBServiceAgingTime =
+            SystemProperties.getInt("ro.vendor.qti.sys.fw.bservice_age", 5000);
+    // Threshold for B-services when in memory pressure
+    int mBServiceAppThreshold =
+            SystemProperties.getInt("ro.vendor.qti.sys.fw.bservice_limit", 5);
+    // Enable B-service aging propagation on memory pressure.
+    boolean mEnableBServicePropagation =
+            SystemProperties.getBoolean("ro.vendor.qti.sys.fw.bservice_enable", false);
 
     /**
      * Flag whether the current user is a "monkey", i.e. whether
@@ -3882,6 +3897,13 @@ public class ActivityManagerService extends IActivityManager.Stub
                 mNativeDebuggingApp = null;
             }
 
+            // Check if zygote should refresh its fonts
+            boolean refreshFont = false;
+            if (SystemProperties.getBoolean(PROP_REFRESH_FONT, false)) {
+                SystemProperties.set(PROP_REFRESH_FONT, "false");
+                refreshFont = true;
+            }
+
             String invokeWith = null;
             if ((app.info.flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
                 // Debuggable apps may include a wrapper script with their library directory.
@@ -3930,12 +3952,12 @@ public class ActivityManagerService extends IActivityManager.Stub
                 startResult = startWebView(entryPoint,
                         app.processName, uid, uid, gids, debugFlags, mountExternal,
                         app.info.targetSdkVersion, seInfo, requiredAbi, instructionSet,
-                        app.info.dataDir, null, entryPointArgs);
+                        app.info.dataDir, null, entryPointArgs, refreshFont);
             } else {
                 startResult = Process.start(entryPoint,
                         app.processName, uid, uid, gids, debugFlags, mountExternal,
                         app.info.targetSdkVersion, seInfo, requiredAbi, instructionSet,
-                        app.info.dataDir, invokeWith, entryPointArgs);
+                        app.info.dataDir, invokeWith, entryPointArgs, refreshFont);
             }
             checkTime(startTime, "startProcess: returned from zygote!");
             Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
@@ -4017,8 +4039,12 @@ public class ActivityManagerService extends IActivityManager.Stub
             // starting this process. (We already invoked this method once when
             // the package was initially frozen through KILL_APPLICATION_MSG, so
             // it doesn't hurt to use it again.)
-            forceStopPackageLocked(app.info.packageName, UserHandle.getAppId(app.uid), false,
-                    false, true, false, false, UserHandle.getUserId(app.userId), "start failure");
+            mHandler.post(() -> {
+                synchronized(ActivityManagerService.this) {
+                    forceStopPackageLocked(app.info.packageName, UserHandle.getAppId(app.uid), false,
+                        false, true, false, false, UserHandle.getUserId(app.userId), "start failure");
+                }
+            });
         }
     }
 
@@ -11543,7 +11569,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                 // pending on the process even though we managed to update its
                 // adj level.  Not sure what to do about this, but at least
                 // the race is now smaller.
-                if (!success) {
+                if (!success || cpr.proc.killedByAm) {
                     // Uh oh...  it looks like the provider's process
                     // has been killed on us.  We need to wait for a new
                     // process to be started, and make sure its death
@@ -13730,6 +13756,33 @@ public class ActivityManagerService extends IActivityManager.Stub
         lp.privateFlags |= WindowManager.LayoutParams.PRIVATE_FLAG_SHOW_FOR_ALL_USERS;
         ((WindowManager)mContext.getSystemService(
                 Context.WINDOW_SERVICE)).addView(v, lp);
+    }
+
+    public final void disableOverlays() {
+        try {
+            IOverlayManager iom = IOverlayManager.Stub.asInterface(
+                    ServiceManager.getService("overlay"));
+            if (iom == null) {
+                return;
+            }
+            Log.d(TAG, "Contacting the Overlay Manager Service for the list of enabled overlays");
+            Map<String, List<OverlayInfo>> allOverlays = iom.getAllOverlays(UserHandle.USER_SYSTEM);
+            if (allOverlays != null) {
+                Log.d(TAG, "The Overlay Manager Service provided the list of enabled overlays");
+                Set<String> set = allOverlays.keySet();
+                for (String targetPackageName : set) {
+                    for (OverlayInfo oi : allOverlays.get(targetPackageName)) {
+                        if (oi.isEnabled()) {
+                            iom.setEnabled(oi.packageName, false, UserHandle.USER_SYSTEM);
+                            Log.d(TAG, "Now disabling \'" + oi.packageName + "\'");
+                        }
+                    }
+                }
+            }
+        } catch (RemoteException re) {
+            re.printStackTrace();
+            Log.d(TAG, "RemoteException while trying to contact the Overlay Manager Service!");
+        }
     }
 
     public void noteWakeupAlarm(IIntentSender sender, int sourceUid, String sourcePkg, String tag) {
@@ -18479,7 +18532,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         IPackageManager pm = AppGlobals.getPackageManager();
         ApplicationInfo app = null;
         try {
-            app = pm.getApplicationInfo(packageName, 0, userId);
+            app = pm.getApplicationInfo(packageName, STOCK_PM_FLAGS, userId);
         } catch (RemoteException e) {
             // can't happen; package manager is process-local
         }
@@ -22002,6 +22055,18 @@ public class ActivityManagerService extends IActivityManager.Stub
         boolean success = true;
 
         if (app.curRawAdj != app.setRawAdj) {
+            String seempStr = "app_uid=" + app.uid
+                + ",app_pid=" + app.pid + ",oom_adj=" + app.curAdj
+                + ",setAdj=" + app.setAdj + ",hasShownUi=" + (app.hasShownUi ? 1 : 0)
+                + ",cached=" + (app.cached ? 1 : 0)
+                + ",fA=" + (app.foregroundActivities ? 1 : 0)
+                + ",fS=" + (app.foregroundServices ? 1 : 0)
+                + ",systemNoUi=" + (app.systemNoUi ? 1 : 0)
+                + ",curSchedGroup=" + app.curSchedGroup
+                + ",curProcState=" + app.curProcState + ",setProcState=" + app.setProcState
+                + ",killed=" + (app.killed ? 1 : 0) + ",killedByAm=" + (app.killedByAm ? 1 : 0)
+                + ",debugging=" + (app.debugging ? 1 : 0);
+            android.util.SeempLog.record_str(385, seempStr);
             app.setRawAdj = app.curRawAdj;
         }
 
@@ -22591,8 +22656,39 @@ public class ActivityManagerService extends IActivityManager.Stub
         int nextCachedAdj = curCachedAdj+1;
         int curEmptyAdj = ProcessList.CACHED_APP_MIN_ADJ;
         int nextEmptyAdj = curEmptyAdj+2;
+        ProcessRecord selectedAppRecord = null;
+        long serviceLastActivity = 0;
+        int numBServices = 0;
         for (int i=N-1; i>=0; i--) {
             ProcessRecord app = mLruProcesses.get(i);
+            if (mEnableBServicePropagation && app.serviceb
+                    && (app.curAdj == ProcessList.SERVICE_B_ADJ)) {
+                numBServices++;
+                for (int s = app.services.size() - 1; s >= 0; s--) {
+                    ServiceRecord sr = app.services.valueAt(s);
+                    if (DEBUG_OOM_ADJ) Slog.d(TAG,"app.processName = " + app.processName
+                            + " serviceb = " + app.serviceb + " s = " + s + " sr.lastActivity = "
+                            + sr.lastActivity + " packageName = " + sr.packageName
+                            + " processName = " + sr.processName);
+                    if (SystemClock.uptimeMillis() - sr.lastActivity
+                            < mMinBServiceAgingTime) {
+                        if (DEBUG_OOM_ADJ) {
+                            Slog.d(TAG,"Not aged enough!!!");
+                        }
+                        continue;
+                    }
+                    if (serviceLastActivity == 0) {
+                        serviceLastActivity = sr.lastActivity;
+                        selectedAppRecord = app;
+                    } else if (sr.lastActivity < serviceLastActivity) {
+                        serviceLastActivity = sr.lastActivity;
+                        selectedAppRecord = app;
+                    }
+                }
+            }
+            if (DEBUG_OOM_ADJ && selectedAppRecord != null) Slog.d(TAG,
+                    "Identified app.processName = " + selectedAppRecord.processName
+                    + " app.pid = " + selectedAppRecord.pid);
             if (!app.killedByAm && app.thread != null) {
                 app.procStateChanged = false;
                 computeOomAdjLocked(app, ProcessList.UNKNOWN_ADJ, TOP_APP, true, now);
@@ -22706,6 +22802,14 @@ public class ActivityManagerService extends IActivityManager.Stub
                     numTrimming++;
                 }
             }
+        }
+        if ((numBServices > mBServiceAppThreshold) && (true == mAllowLowerMemLevel)
+                && (selectedAppRecord != null)) {
+            ProcessList.setOomAdj(selectedAppRecord.pid, selectedAppRecord.info.uid,
+                    ProcessList.CACHED_APP_MAX_ADJ);
+            selectedAppRecord.setAdj = selectedAppRecord.curAdj;
+            if (DEBUG_OOM_ADJ) Slog.d(TAG,"app.processName = " + selectedAppRecord.processName
+                        + " app.pid = " + selectedAppRecord.pid + " is moved to higher adj");
         }
 
         incrementProcStateSeqAndNotifyAppsLocked();

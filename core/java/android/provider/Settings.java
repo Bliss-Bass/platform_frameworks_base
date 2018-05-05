@@ -1750,6 +1750,10 @@ public final class Settings {
             return true;
         }
 
+        public int getCurrentGeneration() {
+            return mCurrentGeneration;
+        }
+
         private int readCurrentGeneration() {
             try {
                 return mArray.get(mIndex);
@@ -1858,6 +1862,7 @@ public final class Settings {
 
         public String getStringForUser(ContentResolver cr, String name, final int userHandle) {
             final boolean isSelf = (userHandle == UserHandle.myUserId());
+            int currentGeneration = -1;
             if (isSelf) {
                 synchronized (NameValueCache.this) {
                     if (mGenerationTracker != null) {
@@ -1870,6 +1875,9 @@ public final class Settings {
                             mValues.clear();
                         } else if (mValues.containsKey(name)) {
                             return mValues.get(name);
+                        }
+                        if (mGenerationTracker != null) {
+                            currentGeneration = mGenerationTracker.getCurrentGeneration();
                         }
                     }
                 }
@@ -1961,7 +1969,10 @@ public final class Settings {
                                         });
                                     }
                                 }
-                                mValues.put(name, value);
+                                if (mGenerationTracker != null && currentGeneration ==
+                                        mGenerationTracker.getCurrentGeneration()) {
+                                    mValues.put(name, value);
+                                }
                             }
                         } else {
                             if (LOCAL_LOGV) Log.i(TAG, "call-query of user " + userHandle
@@ -2002,7 +2013,10 @@ public final class Settings {
 
                 String value = c.moveToNext() ? c.getString(0) : null;
                 synchronized (NameValueCache.this) {
-                    mValues.put(name, value);
+                    if(mGenerationTracker != null &&
+                            currentGeneration == mGenerationTracker.getCurrentGeneration()) {
+                        mValues.put(name, value);
+                    }
                 }
                 if (LOCAL_LOGV) {
                     Log.v(TAG, "cache miss [" + mUri.getLastPathSegment() + "]: " +
@@ -2233,6 +2247,7 @@ public final class Settings {
         /** @hide */
         public static String getStringForUser(ContentResolver resolver, String name,
                 int userHandle) {
+            android.util.SeempLog.record(android.util.SeempLog.getSeempGetApiIdFromValue(name));
             if (MOVED_TO_SECURE.contains(name)) {
                 Log.w(TAG, "Setting " + name + " has moved from android.provider.Settings.System"
                         + " to android.provider.Settings.Secure, returning read-only value.");
@@ -2260,6 +2275,7 @@ public final class Settings {
         /** @hide */
         public static boolean putStringForUser(ContentResolver resolver, String name, String value,
                 int userHandle) {
+            android.util.SeempLog.record(android.util.SeempLog.getSeempPutApiIdFromValue(name));
             if (MOVED_TO_SECURE.contains(name)) {
                 Log.w(TAG, "Setting " + name + " has moved from android.provider.Settings.System"
                         + " to android.provider.Settings.Secure, value is unchanged.");
@@ -7114,6 +7130,13 @@ public final class Settings {
         public static final String QS_AUTO_ADDED_TILES = "qs_auto_tiles";
 
         /**
+         * Force authorize Substratum (or equivalent) frontend calling packages by ThemeInterfacer
+         * The value is boolean (1 or 0).
+         * @hide
+         */
+        public static final String FORCE_AUTHORIZE_SUBSTRATUM_PACKAGES = "force_authorize_substratum_packages";
+
+        /**
          * This are the settings to be backed up.
          *
          * NOTE: Settings are backed up and restored in the order they appear
@@ -7686,6 +7709,12 @@ public final class Settings {
                 "wireless_charging_started_sound";
 
         /**
+         * URI for the battery plugged sound file.
+         * @hide
+         */
+        public static final String BATTERY_PLUGGED_SOUND = "battery_plugged_sound";
+
+        /**
          * Whether to play a sound for charging events.
          * @hide
          */
@@ -8134,7 +8163,7 @@ public final class Settings {
         * @hide
         */
        @SystemApi
-       public static final String OTA_DISABLE_AUTOMATIC_UPDATE = "ota_disable_automatic_update";
+       public static final String OTA_DISABLE_AUTOMATIC_UPDATE = String.valueOf(1);
 
        /**
         * Whether the package manager should send package verification broadcasts for verifiers to

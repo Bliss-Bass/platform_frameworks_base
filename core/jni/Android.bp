@@ -18,10 +18,6 @@ cc_library_shared {
         "-Wunused",
         "-Wunreachable-code",
 
-        // necessary for Clang as the GL bindings need to turn
-        // off a GCC warning that Clang doesn't know.
-        "-Wno-unknown-pragmas",
-
         // TODO: Linear blending should be enabled by default, but we are
         // TODO: making it an opt-in while it's a work in progress
         //"-DANDROID_ENABLE_LINEAR_BLENDING",
@@ -193,6 +189,7 @@ cc_library_shared {
         "com_android_internal_view_animation_NativeInterpolatorFactoryHelper.cpp",
         "hwbinder/EphemeralStorage.cpp",
         "fd_utils.cpp",
+        "android_util_SeempLog.cpp"
     ],
 
     include_dirs: [

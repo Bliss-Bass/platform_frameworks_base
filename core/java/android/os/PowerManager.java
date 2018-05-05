@@ -407,6 +407,16 @@ public final class PowerManager {
 
     /**
      * The value to pass as the 'reason' argument to reboot() to reboot into
+     * bootloader mode if you need to get to the choppa (cit)
+     * <p>
+     * Requires {@link android.Manifest.permission#REBOOT}).
+     * </p>
+     * @hide
+     */
+    public static final String REBOOT_BOOTLOADER = "bootloader";
+
+    /**
+     * The value to pass as the 'reason' argument to reboot() to reboot into
      * recovery mode for applying system updates.
      * <p>
      * Requires the {@link android.Manifest.permission#RECOVERY}
@@ -1516,5 +1526,16 @@ public final class PowerManager {
                 }
             };
         }
+    }
+
+    /**
+     *  powerHint used by some Nvidia devices
+     *  Ignores any bytes of data beyond the first
+     *  @hide
+     */
+    public void powerHint(int hintId, int[] data) {
+        try {
+            mService.powerHint(hintId, data.length > 0 ? data[0] : 0);
+        } catch (RemoteException dummy) {}
     }
 }

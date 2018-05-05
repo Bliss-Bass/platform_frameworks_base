@@ -97,6 +97,7 @@ public class AtomicFile {
                 }
             } else {
                 mBaseName.delete();
+                mBackupName.renameTo(mBaseName);
             }
         }
         FileOutputStream str = null;
@@ -148,10 +149,18 @@ public class AtomicFile {
             FileUtils.sync(str);
             try {
                 str.close();
-                mBaseName.delete();
-                mBackupName.renameTo(mBaseName);
+                if (mBackupName.exists()) {
+                    mBaseName.delete();
+                    mBackupName.renameTo(mBaseName);
+                }
             } catch (IOException e) {
                 Log.w("AtomicFile", "failWrite: Got exception:", e);
+            }
+        } else {
+            if (!mBaseName.exists()) {
+                if (mBackupName.exists()) {
+                    mBackupName.renameTo(mBaseName);
+                }
             }
         }
     }

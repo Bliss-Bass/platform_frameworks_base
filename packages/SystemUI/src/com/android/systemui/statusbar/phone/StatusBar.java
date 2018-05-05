@@ -31,6 +31,7 @@ import static com.android.systemui.statusbar.phone.BarTransitions.MODE_SEMI_TRAN
 import static com.android.systemui.statusbar.phone.BarTransitions.MODE_TRANSLUCENT;
 import static com.android.systemui.statusbar.phone.BarTransitions.MODE_TRANSPARENT;
 import static com.android.systemui.statusbar.phone.BarTransitions.MODE_WARNING;
+import static com.android.systemui.statusbar.phone.BarTransitions.MODE_POWERSAVE_WARNING;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -1323,6 +1324,16 @@ public class StatusBar extends SystemUI implements DemoMode,
         reevaluateStyles();
     }
 
+    @Override
+    public void onOverlayChanged() {
+        updateNotificationsOnOverlayChanged();
+        mStackScroller.onOverlayChanged();
+        mNotificationShelf.onOverlayChanged();
+        mNotificationPanel.onOverlayChanged();
+        Dependency.get(DarkIconDispatcher.class).onOverlayChanged(mContext);
+        reinflateViews();
+    }
+
     private void reinflateViews() {
         reevaluateStyles();
 
@@ -1366,6 +1377,20 @@ public class StatusBar extends SystemUI implements DemoMode,
             boolean exposedGuts = mNotificationGutsExposed != null
                     && entry.row.getGuts() == mNotificationGutsExposed;
             entry.row.onDensityOrFontScaleChanged();
+            if (exposedGuts) {
+                mNotificationGutsExposed = entry.row.getGuts();
+                bindGuts(entry.row, mGutsMenuItem);
+            }
+        }
+    }
+
+    private void updateNotificationsOnOverlayChanged() {
+        ArrayList<Entry> activeNotifications = mNotificationData.getActiveNotifications();
+        for (int i = 0; i < activeNotifications.size(); i++) {
+            Entry entry = activeNotifications.get(i);
+            boolean exposedGuts = mNotificationGutsExposed != null
+                    && entry.row.getGuts() == mNotificationGutsExposed;
+            entry.row.onOverlayChanged();
             if (exposedGuts) {
                 mNotificationGutsExposed = entry.row.getGuts();
                 bindGuts(entry.row, mGutsMenuItem);
@@ -1514,6 +1539,11 @@ public class StatusBar extends SystemUI implements DemoMode,
                 animateCollapsePanels(CommandQueue.FLAG_EXCLUDE_NONE);
             }
         };
+
+        if (hideAnimatedList.isEmpty()) {
+            animationFinishAction.run();
+            return;
+        }
 
         // let's disable our normal animations
         mStackScroller.setDismissAllInProgress(true);
@@ -3370,7 +3400,7 @@ public class StatusBar extends SystemUI implements DemoMode,
         final boolean anim = !mNoAnimationOnNextBarModeChange && mDeviceInteractive
                 && windowState != WINDOW_STATE_HIDDEN && !powerSave;
         if (powerSave && getBarState() == StatusBarState.SHADE) {
-            mode = MODE_WARNING;
+            mode = MODE_POWERSAVE_WARNING;
         }
         transitions.transitionTo(mode, anim);
     }
@@ -5479,7 +5509,9 @@ public class StatusBar extends SystemUI implements DemoMode,
 
     public boolean isKeyguardShowing() {
         if (mStatusBarKeyguardViewManager == null) {
-            Slog.i(TAG, "isKeyguardShowing() called before startKeyguard(), returning true");
+            if (DEBUG) {
+                Slog.i(TAG, "isKeyguardShowing() called before startKeyguard(), returning true");
+            }
             return true;
         }
         return mStatusBarKeyguardViewManager.isShowing();
@@ -7547,8 +7579,10 @@ public class StatusBar extends SystemUI implements DemoMode,
             // startKeyguard() hasn't been called yet, so we don't know.
             // Make sure anything that needs to know isKeyguardSecure() checks and re-checks this
             // value onVisibilityChanged().
-            Slog.w(TAG, "isKeyguardSecure() called before startKeyguard(), returning false",
-                    new Throwable());
+            if (DEBUG) {
+                Slog.w(TAG, "isKeyguardSecure() called before startKeyguard(), returning false",
+                        new Throwable());
+            }
             return false;
         }
         return mStatusBarKeyguardViewManager.isSecure();

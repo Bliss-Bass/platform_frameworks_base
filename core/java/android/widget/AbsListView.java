@@ -627,6 +627,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
     Runnable mPositionScrollAfterLayout;
     private int mMinimumVelocity;
     private int mMaximumVelocity;
+    private int mDecacheThreshold;
     private float mVelocityScale = 1.0f;
 
     final boolean[] mIsScrap = new boolean[1];
@@ -880,6 +881,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
         mVerticalScrollFactor = configuration.getScaledVerticalScrollFactor();
         mMinimumVelocity = configuration.getScaledMinimumFlingVelocity();
         mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
+        mDecacheThreshold = mMaximumVelocity / 2;
         mOverscrollDistance = configuration.getScaledOverscrollDistance();
         mOverflingDistance = configuration.getScaledOverflingDistance();
 
@@ -3867,6 +3869,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
         mHasPerformedLongPress = false;
         mActivePointerId = ev.getPointerId(0);
 
+        hideSelector();
         if (mTouchMode == TOUCH_MODE_OVERFLING) {
             // Stopped the fling. It is a scroll.
             mFlingRunnable.endFling();
@@ -4028,6 +4031,11 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                                 }
                                 mSelector.setHotspot(x, ev.getY());
                             }
+                            if (!mDataChanged && !mIsDetaching && isAttachedToWindow()) {
+                                if (!post(performClick)) {
+                                    performClick.run();
+                                }
+                            }
                             if (mTouchModeReset != null) {
                                 removeCallbacks(mTouchModeReset);
                             }
@@ -4038,9 +4046,6 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                                     mTouchMode = TOUCH_MODE_REST;
                                     child.setPressed(false);
                                     setPressed(false);
-                                    if (!mDataChanged && !mIsDetaching && isAttachedToWindow()) {
-                                        performClick.run();
-                                    }
                                 }
                             };
                             postDelayed(mTouchModeReset,
@@ -4595,7 +4600,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                     // Keep the fling alive a little longer
                     postDelayed(this, FLYWHEEL_TIMEOUT);
                 } else {
-                    endFling();
+                    endFling(false); // Don't disable the scrolling cache right after it was enabled
                     mTouchMode = TOUCH_MODE_SCROLL;
                     reportScrollStateChange(OnScrollListener.SCROLL_STATE_TOUCH_SCROLL);
                 }
@@ -4606,9 +4611,15 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
 
         FlingRunnable() {
             mScroller = new OverScroller(getContext());
+            mScroller.setFriction(0.006f);
         }
 
         void start(int initialVelocity) {
+            if (Math.abs(initialVelocity) > mDecacheThreshold) {
+                // For long flings, scrolling cache causes stutter, so don't use it
+                clearScrollingCache();
+            }
+
             int initialY = initialVelocity < 0 ? Integer.MAX_VALUE : 0;
             mLastFlingY = initialY;
             mScroller.setInterpolator(null);
@@ -4686,6 +4697,10 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
         }
 
         void endFling() {
+            endFling(true);
+        }
+
+        void endFling(boolean clearCache) {
             mTouchMode = TOUCH_MODE_REST;
 
             removeCallbacks(this);
@@ -4694,7 +4709,8 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
             if (!mSuppressIdleStateChangeCall) {
                 reportScrollStateChange(OnScrollListener.SCROLL_STATE_IDLE);
             }
-            clearScrollingCache();
+            if (clearCache)
+                clearScrollingCache();
             mScroller.abortAnimation();
 
             if (mFlingStrictSpan != null) {
@@ -5226,17 +5242,21 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
         }
 
         mRecycler.fullyDetachScrapViews();
+        boolean selectorOnScreen = false;
         if (!inTouchMode && mSelectedPosition != INVALID_POSITION) {
             final int childIndex = mSelectedPosition - mFirstPosition;
             if (childIndex >= 0 && childIndex < getChildCount()) {
                 positionSelector(mSelectedPosition, getChildAt(childIndex));
+                selectorOnScreen = true;
             }
         } else if (mSelectorPosition != INVALID_POSITION) {
             final int childIndex = mSelectorPosition - mFirstPosition;
             if (childIndex >= 0 && childIndex < getChildCount()) {
-                positionSelector(INVALID_POSITION, getChildAt(childIndex));
+                positionSelector(mSelectorPosition, getChildAt(childIndex));
+                selectorOnScreen = true;
             }
-        } else {
+        }
+        if (!selectorOnScreen) {
             mSelectorRect.setEmpty();
         }
 

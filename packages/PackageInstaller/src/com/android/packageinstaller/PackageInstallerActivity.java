@@ -44,6 +44,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Settings;
@@ -517,12 +518,17 @@ public class PackageInstallerActivity extends AlertActivity {
      * Check if it is allowed to install the package and initiate install if allowed.
      */
     private void checkIfAllowedAndInitiateInstall() {
+        if (SystemProperties.get("ro.boot.bliss.bootmode").equals("lockdown")) {
+            showDialogInner(DLG_UNKNOWN_SOURCES_RESTRICTED_FOR_USER);
+            return;
+        }
         if (mAllowUnknownSources || !isInstallRequestFromUnknownSource(getIntent())) {
             if (mLocalLOGV) Log.i(TAG, "install allowed");
             initiateInstall();
         } else {
             handleUnknownSources();
         }
+        
     }
 
     private void handleUnknownSources() {

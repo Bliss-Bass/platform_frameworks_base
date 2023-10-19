@@ -29,6 +29,7 @@ import android.hardware.display.DisplayManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.os.Trace;
 import android.os.UserHandle;
 import android.provider.Settings;
@@ -514,7 +515,13 @@ public class NavigationBarController implements
     }
 
     private boolean shouldShowTaskbar() {
-        return mTaskbarShowing;
+        // Check if the property persist.bliss.disable_taskbar is true
+        boolean disableNavigationTaskbar = SystemProperties.getBoolean("persist.bliss.disable_taskbar", false);
+        if (disableNavigationTaskbar) {
+            return false;
+        } else {
+            return mTaskbarShowing;
+        }
     }
 
     /** @return {@link NavigationBar} on the default display. */

@@ -22,6 +22,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Rect;
+import android.os.SystemProperties;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.Pair;
@@ -77,9 +78,18 @@ public class PhoneStatusBarView extends FrameLayout {
 
     private boolean mBrightnessControlEnabled;
 
+    // New flag to track whether the status bar is enabled or disabled
+    private boolean isStatusBarEnabled = true;
+
+    // Check the system property to disable the status bar by default
+    boolean disableStatusBarByDefault = SystemProperties.getBoolean("persist.bliss.disable_statusbar", false);
+
     public PhoneStatusBarView(Context context, AttributeSet attrs) {
         super(context, attrs);
         mContentInsetsProvider = Dependency.get(StatusBarContentInsetsProvider.class);
+        if (disableStatusBarByDefault) {
+            setStatusBarEnabled(false);
+        }
     }
 
     void setTouchEventHandler(Gefingerpoken handler) {
@@ -118,6 +128,11 @@ public class PhoneStatusBarView extends FrameLayout {
         // Always have Battery meters in the status bar observe the dark/light modes.
         Dependency.get(DarkIconDispatcher.class).addDarkReceiver(mBattery);
         mClockController.addDarkReceiver();
+
+        if (disableStatusBarByDefault) {
+            setStatusBarEnabled(false);
+        }
+        
         if (updateDisplayParameters()) {
             updateLayoutForCutout();
         }
@@ -213,7 +228,13 @@ public class PhoneStatusBarView extends FrameLayout {
             );
             return true;
         }
-        return mTouchEventHandler.onTouchEvent(event);
+        // Check if the status bar is enabled
+        if (isStatusBarEnabled) {
+            return mTouchEventHandler.onTouchEvent(event);
+        } else {
+            return true; // Consume the touch event when the status bar is disabled
+        }
+        
     }
 
     @Override
@@ -319,5 +340,13 @@ public class PhoneStatusBarView extends FrameLayout {
 
     public ClockController getClockController() {
         return mClockController;
+    }
+
+    // New method to enable or disable the status bar and touch events
+    public void setStatusBarEnabled(boolean enabled) {
+        isStatusBarEnabled = enabled;
+
+        // Disable and hide statusbar
+        setVisibility(enabled ? View.VISIBLE : View.GONE);
     }
 }

@@ -136,7 +136,7 @@ public class ScreenPinningRequest implements View.OnClickListener,
 
         // show the confirmation
         WindowManager.LayoutParams lp = getWindowLayoutParams();
-        mWindowManager.addView(mRequestWindow, lp);
+        // mWindowManager.addView(mRequestWindow, lp);
     }
 
     @Override

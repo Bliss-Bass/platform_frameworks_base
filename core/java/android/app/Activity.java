@@ -106,7 +106,6 @@ import android.view.DragEvent;
 import android.view.KeyEvent;
 import android.view.KeyboardShortcutGroup;
 import android.view.KeyboardShortcutInfo;
-import android.view.InputDevice;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -1966,10 +1965,6 @@ public class Activity extends ContextThemeWrapper
         dispatchActivityResumed();
         mActivityTransitionState.onResume(this);
         enableAutofillCompatibilityIfNeeded();
-        //PrimeOS changes start
-        ActivityManager.setFakeClickAsTouch(android.provider.Settings.Global.getInt(getContentResolver(), 
-        android.provider.Settings.Global.FORCE_MOUSE_CLICK_AS_TOUCH, 0) == 1);
-        //PrimeOS change end
         if (mAutoFillResetNeeded) {
             if (!mAutoFillIgnoreFirstResumePause) {
                 View focus = getCurrentFocus();
@@ -4221,11 +4216,6 @@ public class Activity extends ContextThemeWrapper
      * @return boolean Return true if this event was consumed.
      */
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        int action = ev.getAction();
-        if((ActivityManager.getFakeClickAsTouch() == 1) && (action == MotionEvent.ACTION_MOVE || action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_UP)) {
-            ev.setSource(InputDevice.SOURCE_TOUCHSCREEN);
-        } else {
-        }
         if (ev.getAction() == MotionEvent.ACTION_DOWN) {
             onUserInteraction();
         }

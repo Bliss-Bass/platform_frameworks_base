@@ -6477,6 +6477,16 @@ public final class Settings {
         /**
          * @hide
          */
+        public static final String PREVENT_POINTER_ACCELERATION = "prevent_pointer_acceleration";
+
+        /**
+         * @hide
+         */
+        public static final String FORCE_MOUSE_AS_TOUCH = "force_mouse_as_touch";
+
+        /**
+         * @hide
+         */
         public static final String ALERT_WINDOW_BYPASS_LOW_RAM = "alert_window_bypass_low_ram";
 
         /**
@@ -6930,6 +6940,8 @@ public final class Settings {
             PRIVATE_SETTINGS.add(STATUS_BAR_LOGO);
             PRIVATE_SETTINGS.add(STATUS_BAR_LOGO_POSITION);
             PRIVATE_SETTINGS.add(STATUS_BAR_LOGO_STYLE);
+            PRIVATE_SETTINGS.add(PREVENT_POINTER_ACCELERATION);
+            PRIVATE_SETTINGS.add(FORCE_MOUSE_AS_TOUCH);
         }
 
         /**
@@ -6944,6 +6956,7 @@ public final class Settings {
             CLONE_TO_MANAGED_PROFILE.add(SOUND_EFFECTS_ENABLED);
             CLONE_TO_MANAGED_PROFILE.add(TEXT_SHOW_PASSWORD);
             CLONE_TO_MANAGED_PROFILE.add(TIME_12_24);
+            CLONE_TO_MANAGED_PROFILE.add(FORCE_MOUSE_AS_TOUCH);
         }
 
         /** @hide */
@@ -17159,13 +17172,6 @@ public final class Settings {
          * @hide
          */
         public static final String BLUETOOTH_OFF_TIMEOUT = "bluetooth_off_timeout";
-
-        /**
-         * To store if user wants to fake touch using clicks
-         * @hide
-         */
-        @Readable
-        public static final String FORCE_MOUSE_CLICK_AS_TOUCH = "force_mouse_click_as_touch";
 
         /**
          * Keys we no longer back up under the current schema, but want to continue to

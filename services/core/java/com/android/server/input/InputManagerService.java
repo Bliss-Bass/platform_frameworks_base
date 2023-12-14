@@ -316,6 +316,8 @@ public class InputManagerService extends IInputManager.Stub
             IBinder fromChannelToken, IBinder toChannelToken, boolean isDragDrop);
     private static native boolean nativeTransferTouch(long ptr, IBinder destChannelToken);
     private static native void nativeSetPointerSpeed(long ptr, int speed);
+    private static native void nativeSetPreventPointerAcceleration(long ptr, int preventPointerAcceleration);
+    private static native void nativeSetForceMouseAsTouch(long ptr, boolean forceMouseAsTouch);
     private static native void nativeSetShowTouches(long ptr, boolean enabled);
     private static native void nativeSetInteractive(long ptr, boolean interactive);
     private static native void nativeReloadCalibration(long ptr);
@@ -500,6 +502,8 @@ public class InputManagerService extends IInputManager.Stub
         Watchdog.getInstance().addMonitor(this);
 
         registerPointerSpeedSettingObserver();
+        registerPreventPointerAccelerationSettingObserver();
+        registerForceMouseAsTouchSettingObserver();
         registerShowTouchesSettingObserver();
         registerAccessibilityLargePointerSettingObserver();
         registerLongPressTimeoutObserver();
@@ -510,6 +514,8 @@ public class InputManagerService extends IInputManager.Stub
             @Override
             public void onReceive(Context context, Intent intent) {
                 updatePointerSpeedFromSettings();
+                updatePreventPointerAccelerationFromSettings();
+                updateForceMouseAsTouchFromSettings();
                 updateShowTouchesFromSettings();
                 updateAccessibilityLargePointerFromSettings();
                 updateDeepPressStatusFromSettings("user switched");
@@ -517,6 +523,8 @@ public class InputManagerService extends IInputManager.Stub
         }, new IntentFilter(Intent.ACTION_USER_SWITCHED), null, mHandler);
 
         updatePointerSpeedFromSettings();
+        updatePreventPointerAccelerationFromSettings();
+        updateForceMouseAsTouchFromSettings();
         updateShowTouchesFromSettings();
         updateAccessibilityLargePointerFromSettings();
         updateDeepPressStatusFromSettings("just booted");
@@ -1863,6 +1871,25 @@ public class InputManagerService extends IInputManager.Stub
         nativeSetPointerSpeed(mPtr, speed);
     }
 
+    private void updatePreventPointerAccelerationFromSettings() {
+        int preventPointerAcceleration = getPreventPointerAccelerationSetting();
+        setPreventPointerAccelerationUnchecked(preventPointerAcceleration);
+    }
+
+    private void setPreventPointerAccelerationUnchecked(int preventPointerAcceleration) {
+        preventPointerAcceleration = Math.min(Math.max(preventPointerAcceleration, 0), 3);
+        nativeSetPreventPointerAcceleration(mPtr, preventPointerAcceleration);
+    }
+
+    private void updateForceMouseAsTouchFromSettings() {
+        boolean forceMouseAsTouch = getForceMouseAsTouchSetting();
+        setForceMouseAsTouchUnchecked(forceMouseAsTouch);
+    }
+
+    private void setForceMouseAsTouchUnchecked(boolean forceMouseAsTouch) {
+        nativeSetForceMouseAsTouch(mPtr, forceMouseAsTouch);
+    }
+
     private void registerPointerSpeedSettingObserver() {
         mContext.getContentResolver().registerContentObserver(
                 Settings.System.getUriFor(Settings.System.POINTER_SPEED), true,
@@ -1882,6 +1909,48 @@ public class InputManagerService extends IInputManager.Stub
         } catch (SettingNotFoundException snfe) {
         }
         return speed;
+    }
+
+    private void registerPreventPointerAccelerationSettingObserver() {
+        mContext.getContentResolver().registerContentObserver(
+                Settings.System.getUriFor(Settings.System.PREVENT_POINTER_ACCELERATION), true,
+                new ContentObserver(mHandler) {
+                    @Override
+                    public void onChange(boolean selfChange) {
+                        updatePreventPointerAccelerationFromSettings();
+                    }
+                }, UserHandle.USER_ALL);
+    }
+
+    private int getPreventPointerAccelerationSetting() {
+        int preventPointerAcceleration = 0;
+        try {
+            preventPointerAcceleration = Settings.System.getIntForUser(mContext.getContentResolver(),
+                    Settings.System.PREVENT_POINTER_ACCELERATION, UserHandle.USER_CURRENT);
+        } catch (SettingNotFoundException ignored) {
+        }
+        return preventPointerAcceleration;
+    }
+
+    private void registerForceMouseAsTouchSettingObserver() {
+        mContext.getContentResolver().registerContentObserver(
+                Settings.System.getUriFor(Settings.System.FORCE_MOUSE_AS_TOUCH), true,
+                new ContentObserver(mHandler) {
+                    @Override
+                    public void onChange(boolean selfChange) {
+                        updateForceMouseAsTouchFromSettings();
+                    }
+                }, UserHandle.USER_ALL);
+    }
+
+    private boolean getForceMouseAsTouchSetting() {
+        boolean forceMouseAsTouch = false;
+        try {
+            forceMouseAsTouch = Settings.System.getIntForUser(mContext.getContentResolver(),
+                    Settings.System.FORCE_MOUSE_AS_TOUCH, UserHandle.USER_CURRENT) > 0;
+        } catch (SettingNotFoundException ignored) {
+        }
+        return forceMouseAsTouch;
     }
 
     private void updateShowTouchesFromSettings() {

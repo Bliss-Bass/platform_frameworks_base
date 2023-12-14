@@ -72,11 +72,9 @@ import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.os.WorkSource;
-import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.Singleton;
 import android.util.Size;
 import android.util.TypedXmlPullParser;
@@ -1778,16 +1776,6 @@ public class ActivityManager {
             }
             return false;
         }
-    }
-
-    private static int mFakeClickAsTouch;
-
-    public static int getFakeClickAsTouch() {
-        return mFakeClickAsTouch;
-    }
-
-    public static void setFakeClickAsTouch(boolean fakeClickAsTouch) {
-        mFakeClickAsTouch = fakeClickAsTouch ? 1 : 0;
     }
 
     /**
@@ -3677,6 +3665,9 @@ public class ActivityManager {
      * with the given package.  This is the same as the kernel killing those
      * processes to reclaim memory; the system will take care of restarting
      * these processes in the future as needed.
+     *
+     * <p class="note">Third party applications can only use this API to kill their own processes.
+     * </p>
      *
      * @param packageName The name of the package whose processes are to
      * be killed.

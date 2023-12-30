@@ -140,7 +140,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import android.os.FileUtils;
 
 /**
  * The power manager service is responsible for coordinating power management
@@ -2091,13 +2090,6 @@ public final class PowerManagerService extends SystemService
             if ((flags & PowerManager.GO_TO_SLEEP_FLAG_NO_DOZE) != 0) {
                 reallySleepDisplayGroupNoUpdateLocked(groupId, eventTime, uid);
             }
-
-            // Adding force suspend code to enter S3 after pressing sleep button
-			try {
-				FileUtils.stringToFile("/sys/power/state", "mem");
-			} catch (IOException e) {
-				Slog.v(TAG, "IOException: " + e);
-			}
         } finally {
             Trace.traceEnd(Trace.TRACE_TAG_POWER);
         }
@@ -5590,6 +5582,13 @@ public final class PowerManagerService extends SystemService
          */
         public void wakeUp(long eventTime, @WakeReason int reason, String details,
                 String opPackageName, boolean checkProximity) {
+
+            final boolean isWakeMotionBlocked = SystemProperties.getBoolean("persist.power.block_wake_motion", false);
+
+            if (isWakeMotionBlocked && reason == PowerManager.WAKE_REASON_WAKE_MOTION) {
+                Slog.i(TAG, "WAKE_MOTION detected, skipping because user might use a mouse");
+                return;
+            }
             if (eventTime > mClock.uptimeMillis()) {
                 throw new IllegalArgumentException("event time must not be in the future");
             }

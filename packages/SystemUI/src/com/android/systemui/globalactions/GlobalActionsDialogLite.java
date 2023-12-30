@@ -713,7 +713,9 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
                     addIfShouldShowAction(tempActions, restartAction);
                 }
             } else if (GLOBAL_ACTION_KEY_SLEEP.equals(actionKey)) {
-				addIfShouldShowAction(tempActions, new SleepAction());
+                if (Settings.System.getInt(mContext.getContentResolver(),
+                        Settings.System.POWERMENU_SLEEP, 1) == 1) {
+				addIfShouldShowAction(tempActions, new SleepAction()); }
             } else if (GLOBAL_ACTION_KEY_ADVANCED_RESTART.equals(actionKey)) {
                 if (Settings.System.getInt(mContext.getContentResolver(),
                         Settings.System.POWERMENU_ADVANCED, 1) == 1) {
@@ -942,14 +944,15 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
     
     private final class SleepAction extends SinglePressAction implements LongPressAction { 
         private SleepAction() { 
-            super(R.drawable.ic_restart, R.string.global_action_sleep); 
+            super(R.drawable.ic_sleep, R.string.global_action_sleep); 
         } 
  
         @Override 
         public boolean onLongPress() { 
             PowerManager mPowerManager = (PowerManager) 
                    mContext.getSystemService(Context.POWER_SERVICE); 
-            mPowerManager.goToSleep(SystemClock.uptimeMillis()); 
+            mPowerManager.goToSleep(SystemClock.uptimeMillis(), PowerManager.GO_TO_SLEEP_REASON_SLEEP_BUTTON,
+                                                                PowerManager.GO_TO_SLEEP_FLAG_NO_DOZE );
             return true; 
         } 
  
@@ -967,7 +970,8 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
         public void onPress() { 
             PowerManager mPowerManager = (PowerManager) 
                    mContext.getSystemService(Context.POWER_SERVICE); 
-            mPowerManager.goToSleep(SystemClock.uptimeMillis()); 
+            mPowerManager.goToSleep(SystemClock.uptimeMillis(), PowerManager.GO_TO_SLEEP_REASON_SLEEP_BUTTON,
+                                                                PowerManager.GO_TO_SLEEP_FLAG_NO_DOZE );
         } 
     } 
 

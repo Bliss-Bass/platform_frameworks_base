@@ -6353,12 +6353,6 @@ public final class Settings {
         public static final String SWIPE_TO_SCREENSHOT = "swipe_to_screenshot";
 
         /**
-         * Whether to enable taskbar.
-         * @hide
-         */
-        public static final String ENABLE_TASKBAR = "enable_taskbar";
-
-        /**
          * boolean value. toggles compact layout in navigation bar
          * @hide
          */
@@ -6424,6 +6418,12 @@ public final class Settings {
          * @hide
          */
         public static final String SCREEN_OFF_ANIMATION = "screen_off_animation";
+
+        /**
+         * Whether to enable taskbar.
+         * @hide
+         */
+        public static final String ENABLE_TASKBAR = "enable_taskbar";
 
         /**
          * IMPORTANT: If you add a new public settings you also have to add it to

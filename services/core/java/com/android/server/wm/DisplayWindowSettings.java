@@ -38,6 +38,7 @@ import android.view.WindowManager.DisplayImePolicy;
 
 import com.android.server.policy.WindowManagerPolicy;
 import com.android.server.wm.DisplayContent.ForceScalingMode;
+import com.android.server.wm.DisplayWindowSettings.SettingsProvider.SettingsEntry;
 
 import java.util.Objects;
 
@@ -132,10 +133,17 @@ class DisplayWindowSettings {
         }
         // No record is present so use default windowing mode policy.
         if (windowingMode == WindowConfiguration.WINDOWING_MODE_UNDEFINED) {
-            windowingMode = mService.mAtmService.mSupportsFreeformWindowManagement
-                    && (mService.mIsPc || dc.getDisplayId() != Display.DEFAULT_DISPLAY)
-                    ? WindowConfiguration.WINDOWING_MODE_FREEFORM
-                    : WindowConfiguration.WINDOWING_MODE_FULLSCREEN;
+            // check for two features that override windowing mode: 
+            // android.software.freeform_window_management & android.hardware.type.pc
+            // if both are present, then use freeform windowing mode
+            // else use fullscreen windowing mode
+            if ((mService.mAtmService.mSupportsFreeformWindowManagement
+                    && mService.mIsPc) && (dc.forceDesktopMode() ||
+                    dc.getDisplayId() != Display.DEFAULT_DISPLAY)) {
+                windowingMode = WindowConfiguration.WINDOWING_MODE_FREEFORM;
+            } else {
+                windowingMode = WindowConfiguration.WINDOWING_MODE_FULLSCREEN;
+            }
         }
         return windowingMode;
     }

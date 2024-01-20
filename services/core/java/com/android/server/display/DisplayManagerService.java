@@ -1530,6 +1530,15 @@ public final class DisplayManagerService extends SystemService {
         // Configure each display device.
         mLogicalDisplayMapper.forEachLocked((LogicalDisplay display) -> {
             final DisplayDevice device = display.getPrimaryDisplayDeviceLocked();
+
+            // Check if the property ro.boot.android.force_rotation_on_external_displays is set and use that for external displays
+            String forceRotationOnExternalDisplays = SystemProperties.get("ro.boot.android.force_rotation_on_external_displays","0");
+            if (device.getDisplayDeviceInfoLocked().type==Display.TYPE_EXTERNAL) {
+                if (forceRotationOnExternalDisplays != "0") {
+                    device.getDisplayDeviceInfoLocked().rotation=Integer.valueOf(forceRotationOnExternalDisplays);
+                }
+            }
+            
             if (device != null) {
                 configureDisplayLocked(t, device);
                 device.performTraversalLocked(t);

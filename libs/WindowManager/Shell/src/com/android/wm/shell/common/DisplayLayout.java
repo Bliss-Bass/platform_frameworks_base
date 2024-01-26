@@ -526,7 +526,16 @@ public class DisplayLayout {
     }
 
     static boolean hasStatusBar(int displayId) {
-        return displayId == Display.DEFAULT_DISPLAY;
+        if (displayId == Display.DEFAULT_DISPLAY) {
+            return displayId == Display.DEFAULT_DISPLAY;
+        } else {
+            // Allow a system property to override this for desktop mode navigation to work on secondary displays.
+            final String statusBarOnSecondaryDisplaysOverride = SystemProperties.get("ro.boot.force.statusbar_on_secondary_displays");
+            if ("1".equals(statusBarOnSecondaryDisplaysOverride)) {
+                return true;
+            }
+            return false;
+        }
     }
 
     /** Retrieve navigation bar position from resources based on rotation and size. */

@@ -499,15 +499,21 @@ public class DisplayLayout {
             }
             return context.getResources().getBoolean(R.bool.config_showNavigationBar);
         } else {
-            boolean isUntrustedVirtualDisplay = info.type == Display.TYPE_VIRTUAL
-                    && info.ownerUid != SYSTEM_UID;
-            final ContentResolver resolver = context.getContentResolver();
-            boolean forceDesktopOnExternal = Settings.Global.getInt(resolver,
-                    DEVELOPMENT_FORCE_DESKTOP_MODE_ON_EXTERNAL_DISPLAYS, 0) != 0;
+            // Allow a system property to override this for desktop mode navigation to work on secondary displays.
+            final String navBarOnSecondaryDisplaysOverride = SystemProperties.get("ro.boot.force.navbar_on_secondary_displays");
+            if ("1".equals(navBarOnSecondaryDisplaysOverride)) {
+                return true;
+            } else {
+                boolean isUntrustedVirtualDisplay = info.type == Display.TYPE_VIRTUAL
+                        && info.ownerUid != SYSTEM_UID;
+                final ContentResolver resolver = context.getContentResolver();
+                boolean forceDesktopOnExternal = Settings.Global.getInt(resolver,
+                        DEVELOPMENT_FORCE_DESKTOP_MODE_ON_EXTERNAL_DISPLAYS, 0) != 0;
 
-            return ((info.flags & FLAG_SHOULD_SHOW_SYSTEM_DECORATIONS) != 0
-                    || (forceDesktopOnExternal && !isUntrustedVirtualDisplay));
-            // TODO(b/142569966): make sure VR2D and DisplayWindowSettings are moved here somehow.
+                return ((info.flags & FLAG_SHOULD_SHOW_SYSTEM_DECORATIONS) != 0
+                        || (forceDesktopOnExternal && !isUntrustedVirtualDisplay));
+                // TODO(b/142569966): make sure VR2D and DisplayWindowSettings are moved here somehow.
+            }
         }
     }
 

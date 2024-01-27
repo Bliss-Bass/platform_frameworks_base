@@ -217,6 +217,15 @@ class DisplayWindowSettings {
         if (dc.getDisplayId() == Display.DEFAULT_DISPLAY) {
             // Default display should show system decors.
             return true;
+        } else {
+            final String statusBarOnSecondaryDisplaysOverride = SystemProperties.get("ro.boot.force.statusbar_on_secondary_displays");
+            if ("1".equals(statusBarOnSecondaryDisplaysOverride)) {
+                return true;
+            }
+            final String navBarOnSecondaryDisplaysOverride = SystemProperties.get("ro.boot.force.navbar_on_secondary_displays");
+            if ("1".equals(navBarOnSecondaryDisplaysOverride)) {
+                return true;
+            }
         }
 
         final DisplayInfo displayInfo = dc.getDisplayInfo();

@@ -224,7 +224,13 @@ public class DisplayLayout {
         if (mHasStatusBar) {
             convertNonDecorInsetsToStableInsets(res, mStableInsets, mCutout, mHasStatusBar);
         }
-        mNavBarFrameHeight = getNavigationBarFrameHeight(res, mWidth > mHeight);
+        // Allow a system property to override anvbar height.
+        final String navbarHeightOverride = SystemProperties.get("ro.boot.force.navbar_height_override");
+        if (!navbarHeightOverride.isEmpty()) {
+            mNavBarFrameHeight = Integer.parseInt(navbarHeightOverride);
+        } else {
+            mNavBarFrameHeight = getNavigationBarFrameHeight(res, mWidth > mHeight);
+        }
     }
 
     /**

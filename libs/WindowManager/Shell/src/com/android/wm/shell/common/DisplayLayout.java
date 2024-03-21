@@ -517,6 +517,8 @@ public class DisplayLayout {
             final String navBarOnSecondaryDisplaysOverride = SystemProperties.get("ro.boot.force.navbar_on_secondary_displays");
             if ("1".equals(navBarOnSecondaryDisplaysOverride)) {
                 return true;
+            } else if ("0".equals(navBarOnSecondaryDisplaysOverride)) {
+                return false;
             } else {
                 boolean isUntrustedVirtualDisplay = info.type == Display.TYPE_VIRTUAL
                         && info.ownerUid != SYSTEM_UID;

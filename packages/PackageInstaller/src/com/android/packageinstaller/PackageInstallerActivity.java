@@ -518,11 +518,7 @@ public class PackageInstallerActivity extends AlertActivity {
      * Check if it is allowed to install the package and initiate install if allowed.
      */
     private void checkIfAllowedAndInitiateInstall() {
-        if (SystemProperties.get("ro.boot.bliss.bootmode").equals("lockdown")) {
-            showDialogInner(DLG_UNKNOWN_SOURCES_RESTRICTED_FOR_USER);
-            return;
-        }
-        if (mAllowUnknownSources || !isInstallRequestFromUnknownSource(getIntent())) {
+        if (mAllowUnknownSources || !isInstallRequestFromUnknownSource(getIntent()) || !SystemProperties.get("ro.boot.bliss.bootmode").equals("lockdown")) {
             if (mLocalLOGV) Log.i(TAG, "install allowed");
             initiateInstall();
         } else {
